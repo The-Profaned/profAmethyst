@@ -1,2 +1,4 @@
 .gradle/
 build/
+# Titan SDK typings are fetched by js/fetch-types.ps1 (the gamevals file is ~11 MB).
+js/types/

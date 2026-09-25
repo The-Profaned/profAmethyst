@@ -61,7 +61,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 tasks.named('jar') {
-    archiveFileName = 'titan-sample-plugin.jar'
+    archiveFileName = 'prof-amethyst-plugin.jar'
 }
 
 // The Titan dev session (gen-N staging, session.json manifest, launch/recycle
@@ -77,3 +77,74 @@ tasks.named('jar') {
 //     sessionSlug = 'titan-java-sample-plugin'
 //     javaDebugPort = 5005
 // }
+
+sourceSets {
+    main {
+        java {
+            // The template's sample Java plugin would load into the dev tab too.
+            exclude '**/sample/**'
+        }
+    }
+}
+
+// JS plugins (js/*.js) don't go through the Java dev-session manifest above -
+// TitanClient's DEV tab loads and hot-reload-watches them straight off disk
+// from the per-generation dev-session load directory
+// (build/.titan/dev/<slug>/load/gen-N/), the same folder the Java plugin JAR
+// is staged into. (%USERPROFILE%/.titanclient/plugins, where js/deploy.ps1
+// copies to, is only scanned once for manual DEV scans - it is NOT
+// hot-reload-watched.)
+def devSessionSlug = providers.gradleProperty('titanDevSessionSlug')
+    .orElse(providers.environmentVariable('TITAN_DEV_SESSION_SLUG'))
+    .orElse(rootProject.name)
+    .get()
+
+def jsPluginSources = fileTree('js') {
+    include '*.js'
+}
+
+def copyJsPluginToGenerations = {
+    def loadDir = file("${buildDir}/.titan/dev/${devSessionSlug}/load")
+    if (!loadDir.exists()) {
+        logger.lifecycle("No Titan dev load directory found at ${loadDir}; skipping JS plugin copy.")
+        return
+    }
+
+    def copied = 0
+    loadDir.eachDirMatch(~/gen-.+/) { generationDir ->
+        copy {
+            from jsPluginSources
+            into generationDir
+        }
+        copied++
+    }
+
+    if (copied == 0) {
+        logger.lifecycle("No Titan dev generation folders found under ${loadDir}; skipped JS plugin copy.")
+    } else {
+        logger.lifecycle("Copied JS plugin(s) to ${copied} Titan dev generation folder(s).")
+    }
+}
+
+// dependsOn (not finalizedBy) so the copy finishes before the client launches
+// and scans gen-N; finalizedBy can let the plugin go missing from the session.
+tasks.register('copyJsPluginToTitanDev') {
+    dependsOn 'stageTitanDevPlugin'
+    inputs.files(jsPluginSources)
+    outputs.upToDateWhen { false }
+    doLast copyJsPluginToGenerations
+}
+
+// `gradlew build` while the dev tab is open pushes JS edits for hot reload.
+tasks.named('build') {
+    doLast copyJsPluginToGenerations
+}
+
+// runViaTitan is an alias for runTitanClient.
+tasks.named('runTitanClient') {
+    dependsOn 'copyJsPluginToTitanDev'
+}
+
+tasks.named('runViaTitanDebug') {
+    dependsOn 'copyJsPluginToTitanDev'
+}
