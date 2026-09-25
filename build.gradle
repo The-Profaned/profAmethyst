@@ -1,0 +1,79 @@
+plugins {
+    id 'java-library'
+    // Adds the Titan dev-session staging tasks (stageTitanDevPlugin,
+    // writeTitanDevSession, runViaTitan, runViaTitanDebug, ...) and the
+    // post-build hot-reload refresh. See settings.gradle for where this
+    // resolves from.
+    id 'net.titan.dev' version '0.1.1'
+}
+
+group = 'net.titan.plugins'
+version = '0.1.0'
+
+def normalizeTitanSdkVersion = { String requested ->
+    def value = requested == null ? '' : requested.trim()
+    if (value.isEmpty() || value.equalsIgnoreCase('latest')) {
+        return 'latest.release'
+    }
+    return value
+}
+def isDynamicTitanSdkVersion = { String value ->
+    value == 'latest.release' ||
+        value == 'latest.integration' ||
+        value.contains('+') ||
+        value.startsWith('[') ||
+        value.startsWith('(')
+}
+def titanSdkVersion = normalizeTitanSdkVersion(
+    providers.gradleProperty('titanSdkVersion').orElse('latest.release').get())
+def titanRepositoryUrl = providers.gradleProperty('titanMavenRepositoryUrl')
+    .orElse(providers.environmentVariable('TITAN_MAVEN_REPOSITORY_URL'))
+    .orElse('https://raw.githubusercontent.com/Soxs/titan-public-sdk/main/maven/releases')
+
+repositories {
+    mavenLocal()
+    maven {
+        name = 'titan'
+        url = uri(titanRepositoryUrl.get())
+    }
+    mavenCentral()
+}
+
+configurations.configureEach {
+    if (isDynamicTitanSdkVersion(titanSdkVersion)) {
+        resolutionStrategy.cacheDynamicVersionsFor 0, 'seconds'
+    }
+}
+
+dependencies {
+    compileOnly "net.titan:titan-plugin-api:${titanSdkVersion}"
+    annotationProcessor "net.titan:titan-plugin-api:${titanSdkVersion}"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 11
+}
+
+tasks.named('jar') {
+    archiveFileName = 'titan-sample-plugin.jar'
+}
+
+// The Titan dev session (gen-N staging, session.json manifest, launch/recycle
+// of a dedicated DEV tab, and the post-build hot-reload refresh) is provided by
+// the net.titan.dev plugin applied above. The template defaults to the
+// TitanLauncher sync repository in gradle.properties (titanClientRoot) and
+// resolves state.json to the current synced runtime. Run `gradlew runViaTitan`.
+//
+// Optional configuration (all values fall back to gradle.properties / env vars):
+//
+// titanDev {
+//     clientRoot = '%USERPROFILE%/.titanclient/repository'
+//     sessionSlug = 'titan-java-sample-plugin'
+//     javaDebugPort = 5005
+// }

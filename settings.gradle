@@ -1,0 +1,17 @@
+pluginManagement {
+    // Resolves the net.titan.dev convention plugin (and its marker) from the
+    // same published Maven repo as the API. Override with -PtitanMavenRepositoryUrl
+    // or TITAN_MAVEN_REPOSITORY_URL when testing against a local file repo.
+    def titanRepositoryUrl = providers.gradleProperty('titanMavenRepositoryUrl')
+        .orElse(providers.environmentVariable('TITAN_MAVEN_REPOSITORY_URL'))
+        .orElse('https://raw.githubusercontent.com/Soxs/titan-public-sdk/main/maven/releases')
+    repositories {
+        maven {
+            name = 'titan'
+            url = uri(titanRepositoryUrl.get())
+        }
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'titan-java-sample-plugin'
