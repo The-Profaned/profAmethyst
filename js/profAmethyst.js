@@ -45,9 +45,9 @@
  */
 
 const CONFIG = {
-    // 1. [REQUIRED] e.g. new titan.WorldArea(3010, 9700, 20, 15, 0)
-    PUBLIC_MINING_AREA: null,
-    PRIVATE_MINING_AREA: null,
+    // 1. [REQUIRED] new titan.WorldArea(x, y, width, height, plane)
+    PUBLIC_MINING_AREA: new titan.WorldArea(3017, 9698, 13, 10, 0),
+    PRIVATE_MINING_AREA: new titan.WorldArea(3001, 9705, 12, 10, 0),
 
     // 2. Product keys in the order the Make-X interface shows them.
     MAKE_X_OPTION_ORDER: ["BOLT_TIPS", "ARROWTIPS", "JAVELIN_HEADS", "DART_TIPS"],
